@@ -88,6 +88,13 @@ Released in early 2025, Florence-2 is Microsoft's compact vision-language founda
 
 What makes Florence-2 particularly valuable for hardware workflows is its unified approach to handling diverse vision tasks through a single prompt-based architecture. This eliminates the need for multiple specialized models when analyzing complex hardware systems like rocket components.
 
+In Florence-2, DaViT serves as the vision encoder:
+
+- Input: Images are processed through the DaViT architecture
+- Processing: The hierarchical dual-attention mechanism captures multi-level visual features
+- Output: The model produces flattened visual token embeddings
+- Multimodal Integration: These visual tokens interact with text embeddings in the shared latent space
+
 ## The SSLV Analysis Pipeline
 
 For spacecraft engineers, quality control and design validation represent critical challenges that directly impact mission success. Our implementation focuses on four key tasks that support the SSLV development lifecycle:
