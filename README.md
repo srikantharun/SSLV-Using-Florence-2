@@ -2,7 +2,6 @@
 
 *By Srikanth Arunachalam | April 20, 2025*
 
-![Image from Florence-2 Official Paper](https://arxiv.org/pdf/2311.06242)
 
 ## Introduction
 
