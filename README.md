@@ -65,6 +65,16 @@ This combines both local spatial information and global channel relationships.
 
 <img width="769" alt="image" src="https://github.com/user-attachments/assets/901783be-398e-4404-b2e0-33186ca6dfda" />
 
+#### Comparison to Traditional Vision Transformers
+
+| Feature | Traditional ViT | DaViT |
+|---------|-----------------|-------|
+| Processing Style | Flat, single-scale | Hierarchical, multi-scale |
+| Attention Mechanism | Standard self-attention | Dual attention (window + channel) |
+| Complexity | Quadratic (O(n²)) | Sub-quadratic |
+| Data Requirements | Very large datasets | More data-efficient |
+| Feature Hierarchy | No explicit hierarchy | Multi-resolution pyramid |
+| Parameter Efficiency | Lower | Higher |
 
 ## What is Florence-2?
 
