@@ -95,9 +95,9 @@ In Florence-2, DaViT serves as the vision encoder:
 - Output: The model produces flattened visual token embeddings
 - Multimodal Integration: These visual tokens interact with text embeddings in the shared latent space
 
-<img width="1000" alt="image" src="https://github.com/user-attachments/assets/ba5e2dde-7d80-4c82-b3c3-66a9363d5c0b" />
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/ba5e2dde-7d80-4c82-b3c3-66a9363d5c0b" />
 
-<img width="1000" alt="image" src="https://github.com/user-attachments/assets/5ae1fa0e-527e-4c6c-acfe-d5889644f3b7" />
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/5ae1fa0e-527e-4c6c-acfe-d5889644f3b7" />
 
 
 ## The SSLV Analysis Pipeline
