@@ -620,6 +620,268 @@ def run_florence_task(image, task_prompt, text_input=None):
     )
     return parsed_answer
 ```
+### Using VGGT To Create Geomentry Mesh  
+
+```
+import tensorflow as tf
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.applications.vgg16 import preprocess_input
+from tensorflow.keras.preprocessing.image import img_to_array
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from matplotlib import cm
+from matplotlib.widgets import RadioButtons
+import ipywidgets as widgets
+from IPython.display import display
+
+# Load VGG16 model
+vgg_model = VGG16(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+
+# Preprocess image for VGG
+def preprocess_image_for_vgg(image_path):
+    img = cv2.imread(image_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = cv2.resize(img, (224, 224))
+    img_array = img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = preprocess_input(img_array)
+    return img_array
+
+# Extract features
+def extract_vgg_features(image_path):
+    img_array = preprocess_image_for_vgg(image_path)
+    features = vgg_model.predict(img_array)
+    return features
+
+# Path to your SSLV rocket image
+image_path = "/content/drive/MyDrive/SSLV_Demo/sslv_full.png"
+
+try:
+    vgg_features = extract_vgg_features(image_path)
+    
+    # Use VGG features to adjust proportions
+    spatial_map = np.sum(vgg_features[0], axis=-1)
+    spatial_map = spatial_map / np.max(spatial_map)
+    height_profile = np.sum(spatial_map, axis=1)
+    height_profile = height_profile / np.sum(height_profile)
+    
+    # Estimate component proportions
+    nose_ratio = height_profile[0]
+    body_ratio = np.sum(height_profile[1:5])
+    nozzle_ratio = height_profile[-1]
+    
+    # Fix: Normalize proportions to ensure they sum to 1.0
+    total_ratio = nose_ratio + body_ratio + nozzle_ratio
+    nose_ratio /= total_ratio
+    body_ratio /= total_ratio
+    nozzle_ratio /= total_ratio
+    
+except Exception as e:
+    print(f"Warning: Could not process image with VGG16: {e}")
+    # Default proportions if image processing fails
+    nose_ratio = 0.2
+    body_ratio = 0.6
+    nozzle_ratio = 0.2
+
+# Rocket dimensions
+rocket_width = 155
+rocket_height = 512
+nose_height = 85
+payload_height = 85
+body_height = 239
+nozzle_height = 103
+fin_width = 233
+
+# Print the estimated proportions for debugging
+print(f"Estimated proportions from VGG features (normalized):")
+print(f"Nose cone ratio: {nose_ratio:.2f}")
+print(f"Body ratio: {body_ratio:.2f}")
+print(f"Nozzle ratio: {nozzle_ratio:.2f}")
+print(f"Sum of ratios: {nose_ratio + body_ratio + nozzle_ratio:.2f}")
+
+# Function to create 3D rocket model
+def create_rocket_3d_model(view_angle=(30, 30), resolution=30):
+    scale = 10.0 / rocket_height
+    r_nose = (rocket_width/2) * scale
+    r_body = (rocket_width/2) * scale
+    r_nozzle_top = r_body
+    r_nozzle_bottom = r_body * 1.3
+    fin_width_scaled = (fin_width/2) * scale
+    fin_height = nozzle_height * scale * 0.8
+    fin_thickness = 0.05
+
+    # Adjust heights using VGG-derived ratios
+    total_height_pixels = nose_height + payload_height + body_height + nozzle_height
+    h_nose = total_height_pixels * nose_ratio * scale
+    h_body = total_height_pixels * body_ratio * scale
+    h_nozzle = total_height_pixels * nozzle_ratio * scale
+    total_height = h_nose + h_body + h_nozzle
+
+    # Create the figure and 3D axes
+    fig = plt.figure(figsize=(12, 10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Define the theta values for the circular cross-sections
+    theta = np.linspace(0, 2*np.pi, resolution)
+
+    # Nose cone (top part)
+    z_nose = np.linspace(0, h_nose, resolution)
+    Theta, Z = np.meshgrid(theta, z_nose)
+    R_nose = r_nose * (1 - Z/h_nose)
+    X_nose = R_nose * np.cos(Theta)
+    Y_nose = R_nose * np.sin(Theta)
+    Z_nose = h_body + h_nozzle + Z
+
+    # Body (middle cylindrical part)
+    z_body = np.linspace(0, h_body, resolution)
+    Theta, Z = np.meshgrid(theta, z_body)
+    X_body = r_body * np.cos(Theta)
+    Y_body = r_body * np.sin(Theta)
+    Z_body = h_nozzle + Z
+
+    # Nozzle (bottom part)
+    z_nozzle = np.linspace(0, h_nozzle, resolution)
+    Theta, Z = np.meshgrid(theta, z_nozzle)
+    R_nozzle = r_nozzle_top + (r_nozzle_bottom - r_nozzle_top) * (1 - Z/h_nozzle)
+    X_nozzle = R_nozzle * np.cos(Theta)
+    Y_nozzle = R_nozzle * np.sin(Theta)
+    Z_nozzle = Z
+
+    # Default colors
+    nose_color = [0.7, 0.7, 0.8]
+    body_color = [0.6, 0.6, 0.7]
+    nozzle_color = [0.5, 0.5, 0.6]
+    fin_color = cm.Greys(0.7)
+
+    try:
+        img = cv2.imread(image_path)
+        if img is not None:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            height, width = img.shape[:2]
+            nose_region = img[0:height//4, :]
+            body_region = img[height//4:3*height//4, :]
+            nozzle_region = img[3*height//4:, :]
+
+            nose_color = np.mean(nose_region, axis=(0, 1)) / 255.0
+            body_color = np.mean(body_region, axis=(0, 1)) / 255.0
+            nozzle_color = np.mean(nozzle_region, axis=(0, 1)) / 255.0
+    except Exception as e:
+        print(f"Warning: Could not extract colors from image: {e}")
+
+    # Plot rocket sections
+    ax.plot_surface(X_nose, Y_nose, Z_nose, color=nose_color, alpha=0.9)
+    ax.plot_surface(X_body, Y_body, Z_body, color=body_color, alpha=0.9)
+    ax.plot_surface(X_nozzle, Y_nozzle, Z_nozzle, color=nozzle_color, alpha=0.9)
+
+    # Add stabilizing fins
+    fin_angles = [0, np.pi/2, np.pi, 3*np.pi/2]
+    for angle in fin_angles:
+        fin_x = np.array([0, fin_width_scaled, 0]) * np.cos(angle)
+        fin_y = np.array([0, fin_width_scaled, 0]) * np.sin(angle)
+        fin_z = np.array([h_nozzle/2, h_nozzle/2 + fin_height/2, h_nozzle/2 + fin_height])
+
+        verts = [list(zip(fin_x, fin_y, fin_z))]
+        fin_poly = Poly3DCollection(verts, color=fin_color, alpha=0.9)
+        ax.add_collection3d(fin_poly)
+
+        fin_x2 = fin_x + fin_thickness * np.sin(angle)
+        fin_y2 = fin_y - fin_thickness * np.cos(angle)
+        verts2 = [list(zip(fin_x2, fin_y2, fin_z))]
+        fin_poly2 = Poly3DCollection(verts2, color=fin_color, alpha=0.9)
+        ax.add_collection3d(fin_poly2)
+
+        edge_x = np.array([fin_x[1], fin_x2[1]])
+        edge_y = np.array([fin_y[1], fin_y2[1]])
+        edge_z = np.array([fin_z[1], fin_z[1]])
+        ax.plot(edge_x, edge_y, edge_z, color=fin_color)
+
+    max_dim = max(r_body*3, total_height)
+    ax.set_xlim(-max_dim, max_dim)
+    ax.set_ylim(-max_dim, max_dim)
+    ax.set_zlim(0, total_height + 1)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.set_title('3D SSLV Rocket Model (Enhanced with VGG16)')
+    
+    # Set the current view angle
+    elev, azim = view_angle
+    ax.view_init(elev=elev, azim=azim)
+    
+    # Remove the tight_layout call that was causing warnings
+    plt.subplots_adjust(right=0.95)
+    
+    return fig, ax
+
+# Fix: Replace matplotlib RadioButtons with IPython widgets for better interactivity
+def display_interactive_rocket_model():
+    # Create initial view
+    current_fig, current_ax = create_rocket_3d_model()
+    plt.close()  # Close the initial figure to avoid display conflicts
+    
+    # Create the dropdown widget for view selection
+    view_dropdown = widgets.Dropdown(
+        options=[
+            ('Default View (30°, 30°)', (30, 30)),
+            ('Top View (90°, 0°)', (90, 0)),
+            ('Side View (0°, 0°)', (0, 0)),
+            ('Bottom View (-90°, 0°)', (-90, 0)),
+            ('Front View (0°, 90°)', (0, 90)),
+            ('Rear View (0°, 270°)', (0, 270)),
+            ('Isometric 1 (45°, 45°)', (45, 45)),
+            ('Isometric 2 (45°, 135°)', (45, 135)),
+        ],
+        value=(30, 30),
+        description='View:',
+        style={'description_width': 'initial'},
+        layout={'width': '300px'}
+    )
+    
+    # Create a resolution slider for detail control
+    resolution_slider = widgets.IntSlider(
+        value=30,
+        min=10,
+        max=60,
+        step=5,
+        description='Resolution:',
+        style={'description_width': 'initial'},
+        layout={'width': '300px'}
+    )
+    
+    # Create an output widget to display the plot
+    output = widgets.Output()
+    
+    # Function to update the view
+    def update_view(change=None):
+        with output:
+            output.clear_output(wait=True)
+            fig, ax = create_rocket_3d_model(
+                view_angle=view_dropdown.value,
+                resolution=resolution_slider.value
+            )
+            plt.show()
+    
+    # Connect the widgets to the update function
+    view_dropdown.observe(update_view, names='value')
+    resolution_slider.observe(update_view, names='value')
+    
+    # Display the widgets and the initial plot
+    display(widgets.VBox([
+        widgets.HBox([view_dropdown, resolution_slider]),
+        output
+    ]))
+    
+    # Show the initial view
+    update_view()
+
+# Run the improved interactive visualization
+display_interactive_rocket_model()
+```
+![image](https://github.com/user-attachments/assets/514b3a67-00a7-4fbe-98d9-a5e966386eaa)
 
 ### Applications in Spacetech Hardware Workflows
 The potential applications for this technology in spacetech hardware workflows are substantial:
