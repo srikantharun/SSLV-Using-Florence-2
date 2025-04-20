@@ -9,19 +9,25 @@ The intersection of computer vision and space technology represents one of the m
 
 In this blog, I'll walk through a practical implementation of Florence-2 for analyzing Small Satellite Launch Vehicle (SSLV) designs, focusing on applications relevant to the growing spacetech ecosystem in Tamil Nadu. This approach combines cutting-edge AI with traditional hardware analysis workflows to solve real engineering challenges.
 
-DaViT Model Architecture
+## DaViT Model Architecture
 DaViT (Data-efficient Vision Transformer) is a hierarchical vision transformer used as the image encoder in Microsoft's Florence-2. It represents a significant advancement in vision transformer technology by combining the benefits of CNNs' hierarchical design with transformers' global context awareness.
-Mathematical Formulation
+
+### Mathematical Formulation
+
 The overall DaViT transformer $(f)$ can be mathematically formulated as:
+```
 f({Ii}i=1N)={Vi,Ci}i=1Nf(\{I_i\}^N_{i=1}) = \{V_i, C_i\}^N_{i=1}f({Ii​}i=1N​)={Vi​,Ci​}i=1N​
+```
 Where:
 
 $I_i \in \mathbb{R}^{3 \times H \times W}$ are input images
 $V_i \in \mathbb{R}^{D \times P}$ are visual token embeddings (D is embedding dimension, P is number of tokens)
 $C_i \in \mathbb{R}^D$ is the [CLS] token embedding for classification/downstream tasks
 
-Key Components
-1. Multi-scale Patch Embedding
+### Key Components
+
+#### 1. Multi-scale Patch Embedding
+
 Unlike standard Vision Transformers that process images at a single scale, DaViT employs a hierarchical approach:
 
 Stage 1: Resolution H/2 × W/2, Channels C₁
@@ -30,7 +36,9 @@ Stage 3: Resolution H/8 × W/8, Channels C₃
 Stage 4: Resolution H/16 × W/16, Channels C₄
 
 Where typically C₁ < C₂ < C₃ < C₄, creating a pyramid structure similar to CNNs.
-2. Dual Attention Mechanism
+
+#### 2. Dual Attention Mechanism
+
 The core innovation of DaViT is its dual attention mechanism that combines:
 Window Attention (Local Processing)
 X_out = WindowMSA(LN(X)) + X
@@ -40,17 +48,20 @@ Channel Attention (Global Processing)
 X_out = ChannelMSA(LN(X)) + X
 X_out = MLP(LN(X_out)) + X_out
 Where ChannelMSA performs attention across channels rather than spatial dimensions, capturing global dependencies.
-3. Dual Attention Block
+
+#### 3. Dual Attention Block
 For each layer in the transformer:
 X(l+1)=DualAttn(X(l))=ChannelAttn(WindowAttn(X(l)))X^{(l+1)} = \text{DualAttn}(X^{(l)}) = \text{ChannelAttn}(\text{WindowAttn}(X^{(l)}))X(l+1)=DualAttn(X(l))=ChannelAttn(WindowAttn(X(l)))
-This combines both local spatial information and global channel relationships.
-Architectural Advantages
 
-Computational Efficiency: The window attention mechanism reduces the quadratic complexity of standard self-attention
-Data Efficiency: Requires less training data than standard ViTs
-Multi-scale Processing: Captures features at different levels of abstraction
-Global Context: Channel attention provides global reasoning capabilities despite the local window attention
-Parameter Efficiency: Better performance with fewer parameters compared to standard ViTs
+This combines both local spatial information and global channel relationships.
+
+#### Architectural Advantages
+
+- Computational Efficiency: The window attention mechanism reduces the quadratic complexity of standard self-attention
+- Data Efficiency: Requires less training data than standard ViTs
+- Multi-scale Processing: Captures features at different levels of abstraction
+- Global Context: Channel attention provides global reasoning capabilities despite the local window attention
+- Parameter Efficiency: Better performance with fewer parameters compared to standard ViTs
 
 <img width="769" alt="image" src="https://github.com/user-attachments/assets/901783be-398e-4404-b2e0-33186ca6dfda" />
 
